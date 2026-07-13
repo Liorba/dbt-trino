@@ -84,8 +84,9 @@
 
   {% set row_sync_dict = schema_changes_dict %}
   {% set source_relation = schema_changes_dict.get('source_relation') %}
+  {% set sync_nested_columns = config.get('sync_nested_columns', false) %}
 
-  {% if source_relation is not none %}
+  {% if source_relation is not none and sync_nested_columns %}
     {% set row_sync_result = adapter.sync_row_columns(
         on_schema_change,
         source_relation,

@@ -306,7 +306,10 @@ class TestIncrementalNestedRowOnSchemaChange:
     def project_config_update(self):
         return {
             "name": "incremental_nested_row_on_schema_change",
-            "models": {"+incremental_strategy": "merge"},
+            "models": {
+                "+incremental_strategy": "merge",
+                "+sync_nested_columns": True,
+            },
         }
 
     def test_incremental_append_nested_row_fields(self, project):
@@ -341,7 +344,10 @@ class TestIncrementalDeeplyNestedRowOnSchemaChange:
     def project_config_update(self):
         return {
             "name": "incremental_deeply_nested_row_on_schema_change",
-            "models": {"+incremental_strategy": "merge"},
+            "models": {
+                "+incremental_strategy": "merge",
+                "+sync_nested_columns": True,
+            },
         }
 
     def test_incremental_append_deeply_nested_row_fields(self, project):

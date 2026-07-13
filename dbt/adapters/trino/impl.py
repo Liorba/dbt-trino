@@ -36,13 +36,12 @@ from dbt.adapters.trino.row_type_utils import (
 
 logger = AdapterLogger("Trino")
 
-NESTED_SCHEMA_EVOLUTION_CATALOGS = frozenset({"iceberg"})
-
 
 @dataclass
 class TrinoConfig(AdapterConfig):
     properties: Optional[Dict[str, str]] = None
     view_security: Optional[str] = "definer"
+    sync_nested_columns: Optional[bool] = None
 
 
 class TrinoAdapter(SQLAdapter):
@@ -129,12 +128,6 @@ class TrinoAdapter(SQLAdapter):
             else:
                 raise
 
-    @classmethod
-    def supports_nested_schema_evolution(cls, catalog: Optional[str]) -> bool:
-        if catalog is None:
-            return False
-        return catalog.lower() in NESTED_SCHEMA_EVOLUTION_CATALOGS
-
     def _format_nested_column_path(self, path: str) -> str:
         return ".".join(self.quote(segment) for segment in path.split("."))
 
@@ -216,21 +209,6 @@ class TrinoAdapter(SQLAdapter):
         schema_changes_dict: Dict[str, Any],
     ) -> Dict[str, Any]:
         if on_schema_change not in ("append_new_columns", "sync_all_columns"):
-            return schema_changes_dict
-
-        catalog = target_relation.database
-        if not self.supports_nested_schema_evolution(catalog):
-            row_type_changes = row_columns_from_type_changes(
-                schema_changes_dict.get("new_target_types", [])
-            )
-            if row_type_changes:
-                logger.warning(
-                    "Nested ROW schema changes detected on catalog '%s', but nested schema "
-                    "evolution is currently supported only for: %s. Consider using "
-                    "full_refresh or manually updating the table schema.",
-                    catalog,
-                    ", ".join(sorted(NESTED_SCHEMA_EVOLUTION_CATALOGS)),
-                )
             return schema_changes_dict
 
         source_columns = {
