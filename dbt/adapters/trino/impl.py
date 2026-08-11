@@ -146,7 +146,7 @@ class TrinoAdapter(SQLAdapter):
             target_type = target_columns.get(column_name)
             if not source_type or not target_type:
                 continue
-            if not is_row_type(source_type) and not is_row_type(target_type):
+            if not is_row_type(source_type) or not is_row_type(target_type):
                 continue
 
             column_diff = diff_row_types(source_type, target_type, column_name)
@@ -224,7 +224,7 @@ class TrinoAdapter(SQLAdapter):
             schema_changes_dict.get("new_target_types", [])
         )
         for column_name in set(source_columns).intersection(target_columns):
-            if is_row_type(source_columns[column_name]) or is_row_type(
+            if is_row_type(source_columns[column_name]) and is_row_type(
                 target_columns[column_name]
             ):
                 row_columns.add(column_name)

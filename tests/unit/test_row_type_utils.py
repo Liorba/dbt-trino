@@ -3,8 +3,10 @@ import unittest
 from dbt.adapters.trino.row_type_utils import (
     collect_field_paths,
     diff_row_types,
+    filter_handled_type_changes,
     is_row_type,
     parse_row_fields,
+    row_columns_from_type_changes,
 )
 
 
@@ -21,6 +23,10 @@ class TestRowTypeUtils(unittest.TestCase):
                 "extra_field": "varchar",
             },
         )
+
+    def test_parse_row_fields_quoted_identifier(self):
+        fields = parse_row_fields('row("a""b" varchar)')
+        self.assertEqual(fields, {"a\"b": "varchar"})
 
     def test_parse_row_fields_nested(self):
         fields = parse_row_fields(
@@ -65,6 +71,27 @@ class TestRowTypeUtils(unittest.TestCase):
         diff = diff_row_types(source, target, "payload")
 
         self.assertEqual(diff.type_changes, (("payload.nested_field", "bigint"),))
+
+    def test_row_columns_from_type_changes(self):
+        changes = [
+            {"column_name": "payload", "new_type": "row(nested_field varchar, extra_field varchar)"},
+            {"column_name": "field1", "new_type": "varchar"},
+        ]
+
+        self.assertEqual(row_columns_from_type_changes(changes), {"payload"})
+
+    def test_filter_handled_type_changes(self):
+        changes = [
+            {"column_name": "payload", "new_type": "row(nested_field varchar, extra_field varchar)"},
+            {"column_name": "field1", "new_type": "varchar"},
+        ]
+
+        filtered = filter_handled_type_changes(changes, {"payload"})
+
+        self.assertEqual(
+            filtered,
+            [{"column_name": "field1", "new_type": "varchar"}],
+        )
 
 
 if __name__ == "__main__":

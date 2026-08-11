@@ -289,6 +289,18 @@ with source_data as (
 {% endif %}
 """
 
+_MODELS__INCREMENTAL_DEEPLY_NESTED_ROW_APPEND_EXPECTED = """
+{{
+    config(materialized='table')
+}}
+
+select
+    id,
+    payload
+from {{ ref('incremental_deeply_nested_row_append') }}
+order by id
+"""
+
 
 @pytest.mark.iceberg
 class TestIncrementalNestedRowOnSchemaChange:
@@ -338,6 +350,7 @@ class TestIncrementalDeeplyNestedRowOnSchemaChange:
         return {
             "deeply_nested_row_base.sql": _MODELS__DEEPLY_NESTED_ROW_BASE,
             "incremental_deeply_nested_row_append.sql": _MODELS__INCREMENTAL_DEEPLY_NESTED_ROW_APPEND,
+            "incremental_deeply_nested_row_append_expected.sql": _MODELS__INCREMENTAL_DEEPLY_NESTED_ROW_APPEND_EXPECTED,
         }
 
     @pytest.fixture(scope="class")
@@ -365,11 +378,38 @@ class TestIncrementalDeeplyNestedRowOnSchemaChange:
                 "deeply_nested_row_base incremental_deeply_nested_row_append",
             ]
         )
-
-        relation = project.adapter.Relation.create(
-            database=project.database,
-            schema=project.test_schema,
-            identifier="incremental_deeply_nested_row_append",
+        run_dbt(["run", "--models", "incremental_deeply_nested_row_append_expected"])
+        check_relations_equal(
+            project.adapter,
+            [
+                "incremental_deeply_nested_row_append",
+                "incremental_deeply_nested_row_append_expected",
+            ],
         )
-        result = project.run_sql(f"SELECT COUNT(*) as cnt FROM {relation}", fetch="one")
-        assert result[0] == 3
+
+
+@pytest.mark.iceberg
+class TestIncrementalNestedRowDefaultBehavior:
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "row_base.sql": _MODELS__ROW_BASE,
+            "incremental_row_append.sql": _MODELS__INCREMENTAL_ROW_APPEND,
+        }
+
+    @pytest.fixture(scope="class")
+    def project_config_update(self):
+        return {
+            "name": "incremental_nested_row_default_behavior",
+            "models": {"+incremental_strategy": "merge"},
+        }
+
+    def test_nested_row_schema_change_skipped_by_default(self, project):
+        run_dbt(["run", "--models", "row_base incremental_row_append"])
+        results = run_dbt(
+            ["run", "--models", "row_base incremental_row_append"],
+            expect_pass=False,
+        )
+        failed_results = [result for result in results if result.status == "error"]
+        assert len(failed_results) == 1
+        assert "TYPE_MISMATCH" in failed_results[0].message

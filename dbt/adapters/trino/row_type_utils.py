@@ -28,9 +28,15 @@ def _parse_identifier(value: str, index: int) -> Tuple[str, int]:
 
     if value[index] == '"':
         end = index + 1
+        chars: List[str] = []
         while end < len(value):
-            if value[end] == '"' and value[end - 1] != "\\":
-                return value[index + 1 : end], end + 1
+            if value[end] == '"':
+                if end + 1 < len(value) and value[end + 1] == '"':
+                    chars.append('"')
+                    end += 2
+                    continue
+                return "".join(chars), end + 1
+            chars.append(value[end])
             end += 1
         raise ValueError(f"Unterminated quoted identifier in {value!r}")
 

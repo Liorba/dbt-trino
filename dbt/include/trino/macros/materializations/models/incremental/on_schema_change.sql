@@ -11,13 +11,7 @@
 
   {% set new_target_types = diff_column_data_types(source_columns, target_columns) %}
 
-  {% if source_not_in_target != [] %}
-    {% set schema_changed = True %}
-  {% elif target_not_in_source != [] or new_target_types != [] %}
-    {% set schema_changed = True %}
-  {% elif new_target_types != [] %}
-    {% set schema_changed = True %}
-  {% endif %}
+  {% set schema_changed = source_not_in_target or target_not_in_source or new_target_types %}
 
   {% set changes_dict = {
     'schema_changed': schema_changed,
@@ -25,10 +19,9 @@
     'target_not_in_source': target_not_in_source,
     'source_columns': source_columns,
     'target_columns': target_columns,
-    'new_target_types': new_target_types
+    'new_target_types': new_target_types,
+    'source_relation': source_relation
   } %}
-
-  {% do changes_dict.update({'source_relation': source_relation}) %}
 
   {{ return(changes_dict) }}
 
@@ -44,7 +37,6 @@
   {% else %}
 
     {% set schema_changes_dict = check_for_schema_changes(source_relation, target_relation) %}
-    {% do schema_changes_dict.update({'source_relation': source_relation}) %}
 
     {% if schema_changes_dict['schema_changed'] %}
 
