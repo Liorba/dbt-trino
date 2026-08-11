@@ -72,9 +72,21 @@ class TestRowTypeUtils(unittest.TestCase):
 
         self.assertEqual(diff.type_changes, (("payload.nested_field", "bigint"),))
 
+    def test_diff_row_types_nested_changes(self):
+        source = "row(payload row(nested_field bigint, added_field varchar))"
+        target = "row(payload row(nested_field integer, removed_field boolean))"
+        diff = diff_row_types(source, target, "record")
+
+        self.assertEqual(diff.additions, (("record.payload.added_field", "varchar"),))
+        self.assertEqual(diff.removals, (("record.payload.removed_field", "boolean"),))
+        self.assertEqual(diff.type_changes, (("record.payload.nested_field", "bigint"),))
+
     def test_row_columns_from_type_changes(self):
         changes = [
-            {"column_name": "payload", "new_type": "row(nested_field varchar, extra_field varchar)"},
+            {
+                "column_name": "payload.nested",
+                "new_type": "row(nested_field varchar, extra_field varchar)",
+            },
             {"column_name": "field1", "new_type": "varchar"},
         ]
 
@@ -82,7 +94,23 @@ class TestRowTypeUtils(unittest.TestCase):
 
     def test_filter_handled_type_changes(self):
         changes = [
-            {"column_name": "payload", "new_type": "row(nested_field varchar, extra_field varchar)"},
+            {
+                "column_name": "payload.nested",
+                "new_type": "row(nested_field varchar, extra_field varchar)",
+            },
+            {"column_name": "field1", "new_type": "varchar"},
+        ]
+
+        filtered = filter_handled_type_changes(changes, {"payload"})
+
+        self.assertEqual(
+            filtered,
+            [{"column_name": "field1", "new_type": "varchar"}],
+        )
+
+    def test_filter_handled_type_changes_dotted_nested_path(self):
+        changes = [
+            {"column_name": "payload.nested_field", "new_type": "bigint"},
             {"column_name": "field1", "new_type": "varchar"},
         ]
 

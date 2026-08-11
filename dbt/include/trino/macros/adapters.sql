@@ -312,15 +312,6 @@
 {% endmacro %}
 
 
-{% macro trino__format_nested_column_path(path) %}
-  {% set quoted_segments = [] %}
-  {% for segment in path.split('.') %}
-    {% do quoted_segments.append(adapter.quote(segment)) %}
-  {% endfor %}
-  {{ return(quoted_segments | join('.')) }}
-{% endmacro %}
-
-
 {% macro trino__alter_relation_add_remove_columns(relation, add_columns, remove_columns) %}
   {% if add_columns is none %}
     {% set add_columns = [] %}
@@ -330,30 +321,16 @@
   {% endif %}
 
   {% for column in add_columns %}
-    {% if '.' in column.name %}
-      {% set column_path = trino__format_nested_column_path(column.name) %}
-      {% set sql -%}
-        alter {{ relation.type }} {{ relation }} add column {{ column_path }} {{ column.data_type }}
-      {%- endset -%}
-    {% else %}
-      {% set sql -%}
-        alter {{ relation.type }} {{ relation }} add column {{ adapter.quote(column.name) }} {{ column.data_type }}
-      {%- endset -%}
-    {% endif %}
+    {% set sql -%}
+      alter {{ relation.type }} {{ relation }} add column {{ adapter.quote(column.name) }} {{ column.data_type }}
+    {%- endset -%}
     {% do run_query(sql) %}
   {% endfor %}
 
   {% for column in remove_columns %}
-    {% if '.' in column.name %}
-      {% set column_path = trino__format_nested_column_path(column.name) %}
-      {% set sql -%}
-        alter {{ relation.type }} {{ relation }} drop column {{ column_path }}
-      {%- endset -%}
-    {% else %}
-      {% set sql -%}
-        alter {{ relation.type }} {{ relation }} drop column {{ adapter.quote(column.name) }}
-      {%- endset -%}
-    {% endif %}
+    {% set sql -%}
+      alter {{ relation.type }} {{ relation }} drop column {{ adapter.quote(column.name) }}
+    {%- endset -%}
     {% do run_query(sql) %}
   {% endfor %}
 {% endmacro %}
@@ -391,10 +368,9 @@
 {% endmacro %}
 
 {% macro trino__alter_column_type(relation, column_name, new_column_type) %}
-  {%- if '.' in column_name or (new_column_type | lower).startswith('row(') -%}
-    {% set formatted_column_name = trino__format_nested_column_path(column_name) if '.' in column_name else adapter.quote(column_name) %}
+  {%- if (new_column_type | lower).startswith('row(') -%}
     {% call statement('alter_column_type') %}
-      alter table {{ relation }} alter column {{ formatted_column_name }} set data type {{ new_column_type }}
+      alter table {{ relation }} alter column {{ adapter.quote(column_name) }} set data type {{ new_column_type }}
     {% endcall %}
   {%- else -%}
   {#
