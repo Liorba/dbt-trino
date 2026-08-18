@@ -1,87 +1,14 @@
-{# Trino-specific schema change handling with nested ROW column synchronization. #}
+{# Trino-specific schema change handling with nested ROW column synchronization.
+   Plain-named sync_column_schemas overrides dbt-core's version in the adapter package. #}
 
-{% macro trino__check_for_schema_changes(source_relation, target_relation) %}
-
-  {% set schema_changed = False %}
-
-  {%- set source_columns = adapter.get_columns_in_relation(source_relation) -%}
-  {%- set target_columns = adapter.get_columns_in_relation(target_relation) -%}
-  {%- set source_not_in_target = diff_columns(source_columns, target_columns) -%}
-  {%- set target_not_in_source = diff_columns(target_columns, source_columns) -%}
-
-  {% set new_target_types = diff_column_data_types(source_columns, target_columns) %}
-
-  {% set schema_changed = source_not_in_target or target_not_in_source or new_target_types %}
-
-  {% set changes_dict = {
-    'schema_changed': schema_changed,
-    'source_not_in_target': source_not_in_target,
-    'target_not_in_source': target_not_in_source,
-    'source_columns': source_columns,
-    'target_columns': target_columns,
-    'new_target_types': new_target_types,
-    'source_relation': source_relation
-  } %}
-
-  {{ return(changes_dict) }}
-
-{% endmacro %}
-
-
-{% macro trino__process_schema_changes(on_schema_change, source_relation, target_relation) %}
-
-  {% if on_schema_change == 'ignore' %}
-
-    {{ return({}) }}
-
-  {% else %}
-
-    {% set schema_changes_dict = check_for_schema_changes(source_relation, target_relation) %}
-
-    {% if schema_changes_dict['schema_changed'] %}
-
-      {% if on_schema_change == 'fail' %}
-
-        {% set fail_msg %}
-            The source and target schemas on this incremental model are out of sync!
-            They can be reconciled in several ways:
-              - set the `on_schema_change` config to either append_new_columns or sync_all_columns, depending on your situation.
-              - Re-run the incremental model with `full_refresh: True` to update the target schema.
-              - update the schema manually and re-run the process.
-
-            Additional troubleshooting context:
-               Source columns not in target: {{ schema_changes_dict['source_not_in_target'] }}
-               Target columns not in source: {{ schema_changes_dict['target_not_in_source'] }}
-               New column types: {{ schema_changes_dict['new_target_types'] }}
-        {% endset %}
-
-        {% do exceptions.raise_compiler_error(fail_msg) %}
-
-      {% else %}
-
-        {% do trino__sync_column_schemas(on_schema_change, target_relation, schema_changes_dict) %}
-
-      {% endif %}
-
-    {% endif %}
-
-    {{ return(schema_changes_dict['source_columns']) }}
-
-  {% endif %}
-
-{% endmacro %}
-
-
-{% macro trino__sync_column_schemas(on_schema_change, target_relation, schema_changes_dict) %}
+{% macro sync_column_schemas(on_schema_change, target_relation, schema_changes_dict) %}
 
   {% set row_sync_dict = schema_changes_dict %}
-  {% set source_relation = schema_changes_dict.get('source_relation') %}
   {% set sync_nested_columns = config.get('sync_nested_columns', false) %}
 
-  {% if source_relation is not none and sync_nested_columns %}
+  {% if sync_nested_columns %}
     {% set row_sync_result = adapter.sync_row_columns(
         on_schema_change,
-        source_relation,
         target_relation,
         schema_changes_dict,
       ) %}
@@ -124,7 +51,5 @@
   {% endset %}
 
   {% do log(schema_change_message) %}
-
-  {% do row_sync_dict.pop('source_relation', none) %}
 
 {% endmacro %}

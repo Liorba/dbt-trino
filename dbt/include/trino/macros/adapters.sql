@@ -368,7 +368,7 @@
 {% endmacro %}
 
 {% macro trino__alter_column_type(relation, column_name, new_column_type) %}
-  {%- if (new_column_type | lower).startswith('row(') -%}
+  {%- if config.get('sync_nested_columns', false) and (new_column_type | lower).startswith('row(') -%}
     {% call statement('alter_column_type') %}
       alter table {{ relation }} alter column {{ adapter.quote(column_name) }} set data type {{ new_column_type }}
     {% endcall %}

@@ -204,7 +204,6 @@ class TrinoAdapter(SQLAdapter):
     def sync_row_columns(
         self,
         on_schema_change: str,
-        source_relation: TrinoRelation,
         target_relation: TrinoRelation,
         schema_changes_dict: Dict[str, Any],
     ) -> Dict[str, Any]:
