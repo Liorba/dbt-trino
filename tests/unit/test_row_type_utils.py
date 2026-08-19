@@ -5,6 +5,7 @@ from dbt.adapters.trino.row_type_utils import (
     diff_row_types,
     filter_handled_type_changes,
     is_row_type,
+    normalize_type,
     parse_row_fields,
     row_columns_from_type_changes,
 )
@@ -120,6 +121,37 @@ class TestRowTypeUtils(unittest.TestCase):
             filtered,
             [{"column_name": "field1", "new_type": "varchar"}],
         )
+
+    def test_diff_row_types_ignores_case_only_type_differences(self):
+        source = "row(nested_field VARCHAR)"
+        target = "row(nested_field varchar)"
+        diff = diff_row_types(source, target, "payload")
+
+        self.assertEqual(diff.type_changes, ())
+
+    def test_parse_row_fields_decimal_with_precision(self):
+        fields = parse_row_fields("row(amount decimal(18,2), name varchar)")
+        self.assertEqual(fields["amount"], "decimal(18,2)")
+        self.assertEqual(fields["name"], "varchar")
+
+    def test_filter_handled_type_changes_missing_column_name(self):
+        changes = [
+            {"new_type": "varchar"},
+            {"column_name": "field1", "new_type": "varchar"},
+        ]
+
+        filtered = filter_handled_type_changes(changes, {"payload"})
+
+        self.assertEqual(
+            filtered,
+            [
+                {"new_type": "varchar"},
+                {"column_name": "field1", "new_type": "varchar"},
+            ],
+        )
+
+    def test_normalize_type_collapses_whitespace_and_case(self):
+        self.assertEqual(normalize_type("  VARCHAR  "), "varchar")
 
 
 if __name__ == "__main__":
