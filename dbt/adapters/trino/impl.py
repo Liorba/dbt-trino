@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import agate
 from dbt.adapters.base.impl import AdapterConfig, ConstraintSupport
 from dbt.adapters.base.meta import available
-from dbt.adapters.events.logging import AdapterLogger
 from dbt.adapters.capability import (
     Capability,
     CapabilityDict,
@@ -14,6 +13,7 @@ from dbt.adapters.capability import (
 )
 from dbt.adapters.catalogs import CatalogRelation
 from dbt.adapters.contracts.relation import RelationConfig
+from dbt.adapters.events.logging import AdapterLogger
 from dbt.adapters.sql import SQLAdapter
 from dbt_common.behavior_flags import BehaviorFlag
 from dbt_common.contracts.constraints import ConstraintType
@@ -172,6 +172,10 @@ class TrinoAdapter(SQLAdapter):
         type_changes: Tuple[Tuple[str, str], ...],
     ) -> None:
         relation_name = relation.render()
+        if relation.type is None:
+            raise DbtDatabaseError(
+                f"Relation type is required for schema changes on {relation_name}"
+            )
         relation_type = relation.type.replace("_", " ")
 
         for path, _field_type in removals:

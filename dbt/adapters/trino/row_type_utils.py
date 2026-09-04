@@ -142,14 +142,10 @@ def diff_row_types(
     target_paths = collect_field_paths(target_type, column_prefix)
 
     additions = sorted(
-        (path, source_paths[path])
-        for path in source_paths
-        if path not in target_paths
+        (path, source_paths[path]) for path in source_paths if path not in target_paths
     )
     removals = sorted(
-        (path, target_paths[path])
-        for path in target_paths
-        if path not in source_paths
+        (path, target_paths[path]) for path in target_paths if path not in source_paths
     )
     type_changes = sorted(
         (path, source_paths[path])

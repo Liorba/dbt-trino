@@ -27,7 +27,7 @@ class TestRowTypeUtils(unittest.TestCase):
 
     def test_parse_row_fields_quoted_identifier(self):
         fields = parse_row_fields('row("a""b" varchar)')
-        self.assertEqual(fields, {"a\"b": "varchar"})
+        self.assertEqual(fields, {'a"b': "varchar"})
 
     def test_parse_row_fields_nested(self):
         fields = parse_row_fields(

@@ -1,7 +1,6 @@
 import pytest
 from dbt.tests.util import check_relations_equal, get_relation_columns, run_dbt
 
-
 _MODELS__INCREMENTAL_ROW_APPEND = """
 {{
     config(
